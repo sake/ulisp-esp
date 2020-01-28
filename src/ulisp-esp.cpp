@@ -131,7 +131,7 @@ typedef int PinMode;
 #if defined(ESP8266)
   #define PSTR(s) s
   #define PROGMEM
-  #define WORKSPACESIZE 3072-SDSIZE       /* Cells (8*bytes) */
+  #define WORKSPACESIZE (3072-SDSIZE)     /* Cells (8*bytes) */
   #define EEPROMSIZE 4096                 /* Bytes available for EEPROM */
   #define SYMBOLTABLESIZE 512             /* Bytes */
   #define SDCARD_SS_PIN 10
@@ -139,7 +139,7 @@ typedef int PinMode;
   typedef int BitOrder;
 
 #elif defined(ESP32)
-  #define WORKSPACESIZE 8000-SDSIZE       /* Cells (8*bytes) */
+  #define WORKSPACESIZE (8000-SDSIZE)     /* Cells (8*bytes) */
   #define EEPROMSIZE 4096                 /* Bytes available for EEPROM */
   #define SYMBOLTABLESIZE 1024            /* Bytes */
   #define analogWrite(x,y) dacWrite((x),(y))
@@ -186,6 +186,30 @@ intptr_t lookupfn (symbol_t name);
 int builtin (char* n);
 void error (symbol_t fname, PGM_P string, object *symbol);
 void error2 (symbol_t fname, PGM_P string);
+int maxbuffer (char *buffer);
+char nthchar (object *string, int n);
+boolean listp (object *x);
+object *apply (symbol_t name, object *function, object *args, object *env);
+void pfl (pfun_t pfun);
+void pfstring (const char *s, pfun_t pfun);
+char *symbolname (symbol_t x);
+void pln (pfun_t pfun);
+char *lookupsymbol (symbol_t name);
+int listlength (symbol_t name, object *list);
+void pserial (char c);
+void pstring (char *s, pfun_t pfun);
+uint8_t lookupmin (symbol_t name);
+uint8_t lookupmax (symbol_t name);
+void pint (int i, pfun_t pfun);
+char *cstring (object *form, char *buffer, int buflen);
+void testescape ();
+int gserial ();
+object *read (gfun_t gfun);
+void printstring (object *form, pfun_t pfun);
+void superprint (object *form, int lm, pfun_t pfun);
+int subwidthlist (object *form, int w);
+void supersub (object *form, int lm, int super, pfun_t pfun);
+int glibrary ();
 
 // Set up workspace
 
@@ -3006,15 +3030,6 @@ object *fn_note (object *args, object *env) {
 
 // Tree Editor
 
-object *fn_edit (object *args, object *env) {
-  object *fun = first(args);
-  object *pair = findvalue(fun, env);
-  clrflag(EXITEDITOR);
-  object *arg = edit(eval(fun, env));
-  cdr(pair) = arg;
-  return arg;
-}
-
 object *edit (object *fun) {
   while (1) {
     if (tstflag(EXITEDITOR)) return fun;
@@ -3030,6 +3045,15 @@ object *edit (object *fun) {
     else if (c == 'x') fun = cdr(fun);
     else pserial('?');
   }
+}
+
+object *fn_edit (object *args, object *env) {
+  object *fun = first(args);
+  object *pair = findvalue(fun, env);
+  clrflag(EXITEDITOR);
+  object *arg = edit(eval(fun, env));
+  cdr(pair) = arg;
+  return arg;
 }
 
 // Pretty printer
@@ -3685,7 +3709,7 @@ object *eval (object *form, object *env) {
   yield(); // Needed on ESP8266 to avoid Soft WDT Reset
   // Enough space?
   if (End != 0xA5) error2(0, PSTR("Stack overflow"));
-  if (Freespace <= WORKSPACESIZE>>4) gc(form, env);
+  if (Freespace <= WORKSPACESIZE >> 4) gc(form, env);
   // Escape
   if (tstflag(ESCAPE)) { clrflag(ESCAPE); error2(0, PSTR("Escape!"));}
   #if defined (serialmonitor)
